@@ -7,7 +7,9 @@ class Room:
     """
     def __init__(self, width, height, size, scaling):
         # You may want many lists. Lists for coins, monsters, etc.
+        self.id = 0
         self.wall_list = None
+        self.treasures_list = None
         self.screen_width  = width
         self.screen_height = height
         self.sprite_size = size
@@ -15,6 +17,7 @@ class Room:
         # This holds the background images. If you don't want changing
         # background images, you can delete this part.
         self.background = None
+        self.near_rooms = {}
     
     def setup(self, tile, background_file):
         """
@@ -23,6 +26,8 @@ class Room:
         """
         # Sprite lists
         self.wall_list = arcade.SpriteList()
+        self.treasures_list = arcade.SpriteList()
+
 
         # -- Set up the walls
         # Create bottom and top row of boxes
@@ -52,6 +57,13 @@ class Room:
 
         # Load the background image for this level.
         self.background = arcade.load_texture(background_file)
+
+    def setNearRooms(self, direction, neighbour):
+        self.near_rooms[direction] = neighbour
+    
+    def getNearRooms(self, direction):
+        return self.near_rooms[direction]
+
 
     def addWall(self, x, y):
         # Random blocks

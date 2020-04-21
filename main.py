@@ -15,26 +15,19 @@ from libs.player import PlayerCharacter
 from libs.room import Room
 from utils.config import ConfigFile
 
-# SPRITE_SIZE = int(SPRITE_NATIVE_SIZE * SPRITE_SCALING_ROOM)
-
-# SCREEN_WIDTH = SPRITE_SIZE * 14
-# SCREEN_HEIGHT = SPRITE_SIZE * 10
-
+from math import floor, ceil
 
 
 class MyGame(arcade.Window):
     """
     Main application class.
-
-    NOTE: Go ahead and delete the methods you don't need.
-    If you do need a method, delete the 'pass' and replace it
-    with your own code. Don't leave 'pass' in this program.
     """
 
     def __init__(self, configurations):
         
         self.configurations = ConfigFile(configurations)
         self.player_infos = self.configurations.general.player
+        self.map_infos = self.configurations.general.map
         # Variables that will hold sprite lists
         self.player_list = None
         # Sprite lists
@@ -42,11 +35,10 @@ class MyGame(arcade.Window):
 
         # Set up the player
         self.rooms = None
-        # self.player_sprite = None
         self.score = 0
         self.sprite_size = int(self.configurations.general.sprite_native_size * self.configurations.general.sprite_scaling_room)
-        self.screen_width = self.sprite_size * self.configurations.general.map.screen_width
-        self.screen_height = self.sprite_size * self.configurations.general.map.screen_height
+        self.screen_width = self.sprite_size * self.configurations.general.screen_width
+        self.screen_height = self.sprite_size * self.configurations.general.screen_height
 
         super().__init__(self.screen_width, self.screen_height, self.configurations.general.screen_title)
 
@@ -72,10 +64,7 @@ class MyGame(arcade.Window):
                                     texture['width'], 
                                     texture['height'],
                                     texture['offset'])
-        # self.player.set_idle_texture(texture_idle)
-        # self.player.set_walk_textures_up(texture_walk_up)
-        # self.player.set_walk_textures_right(texture_walk_right)
-        # self.player.set_walk_textures_left(texture_walk_left)
+
         self.player.textures = self.player.textures + self.player.idle_texture
 
         # self.player.textures = []
@@ -92,70 +81,47 @@ class MyGame(arcade.Window):
         # Our list of rooms
         self.rooms = []
         # Create the rooms. Extend the pattern for each room.
-        room1 = Room(self.screen_width, self.screen_height, self.sprite_size, self.configurations.general.sprite_scaling_room)
-        room1.setup("brickGrey.png", "assets/backgrounds/black1.png")
-        room1.removeWall(13,4)
-        room1.removeWall(13,5)
-        room1.removeWall(7,0)
-        room1.removeWall(6,0)
-        room1.addWall(6,5)
-        room1.addWall(7,6)
-        room1.addWall(7,5)
-        room1.addWall(7,4)
-        room1.addWall(7,3)
-        self.rooms.append(room1)
-        room2 = Room(self.screen_width, self.screen_height, self.sprite_size, self.configurations.general.sprite_scaling_room)
-        room2.setup("brickGrey.png", "assets/backgrounds/black1.png")
-        room2.removeWall(0,4)
-        room2.removeWall(0,5)
-        room2.removeWall(7,0)
-        room2.removeWall(6,0)
-        room2.addWall(6,7)
-        room2.addWall(7,7)
-        room2.addWall(8,7)
-        room2.addWall(8,6)
-        room2.addWall(7,5)
-        room2.addWall(6,4)
-        room2.addWall(6,3)
-        room2.addWall(7,3)
-        room2.addWall(8,3)
-        self.rooms.append(room2)
-        room3 = Room(self.screen_width, self.screen_height, self.sprite_size, self.configurations.general.sprite_scaling_room)
-        room3.setup("brickGrey.png", "assets/backgrounds/black1.png")
-        room3.removeWall(7,9)
-        room3.removeWall(6,9)
-        room3.removeWall(13,4)
-        room3.removeWall(13,5)
-        room3.addWall(6,7)
-        room3.addWall(7,7)
-        room3.addWall(8,7)
-        room3.addWall(8,6)
-        room3.addWall(7,5)
-        room3.addWall(8,5)
-        room3.addWall(8,4)
-        room3.addWall(6,3)
-        room3.addWall(7,3)
-        room3.addWall(8,3)
-        self.rooms.append(room3)
-        room4 = Room(self.screen_width, self.screen_height, self.sprite_size, self.configurations.general.sprite_scaling_room)
-        room4.setup("brickGrey.png", "assets/backgrounds/black1.png")
-        room4.removeWall(7,9)
-        room4.removeWall(6,9)
-        room4.removeWall(0,4)
-        room4.removeWall(0,5)
-        room4.addWall(7,7)
-        room4.addWall(7,6)
-        room4.addWall(7,5)
-        room4.addWall(7,4)
-        room4.addWall(7,3)
-        room4.addWall(6,6)
-        room4.addWall(6,5)
-        room4.addWall(5,5)
-        room4.addWall(8,5)
-        self.rooms.append(room4)
-        # Our starting room number
-        self.current_room = 0
+        i = 0
+        for room in self.map_infos.rooms:
+            new_room = Room(self.screen_width, self.screen_height, self.sprite_size, self.configurations.general.sprite_scaling_room)
+            new_room.setup(room['walls'], room['background'])
+            new_room.id = i
+            if 'wall_at' in room:
+                for wall in room['wall_at']:
+                    new_room.addWall(int(wall.split(',')[0]), int(wall.split(',')[1]))
 
+            if 'connect_east' in room:
+                new_room.removeWall(13, floor((self.map_infos.grids_height-1) / 2))
+                new_room.removeWall(13, ceil((self.map_infos.grids_height-1) / 2))
+                new_room.setNearRooms('east', room['connect_east'])
+            if 'connect_west' in room:
+                new_room.removeWall(0, floor((self.map_infos.grids_height-1) / 2))
+                new_room.removeWall(0, ceil((self.map_infos.grids_height-1) / 2))
+                new_room.setNearRooms('west', room['connect_west'])
+            if 'connect_south' in room:
+                new_room.removeWall(floor((self.map_infos.grids_width-1) / 2), 0)
+                new_room.removeWall(ceil((self.map_infos.grids_width-1) / 2), 0)
+                new_room.setNearRooms('south', room['connect_south'])
+            if 'connect_north' in room:
+                new_room.removeWall(floor((self.map_infos.grids_width-1) / 2), 9)
+                new_room.removeWall(ceil((self.map_infos.grids_width-1) / 2), 9)
+                new_room.setNearRooms('north', room['connect_north'])
+            self.rooms.append(new_room)
+            i+=1
+
+        # Create the treasures
+        for treasure in self.map_infos.treasure:
+            # Create the coin instance
+            # Coin image from kenney.nl
+            coin = arcade.Sprite(treasure['image'],
+                                 treasure['scaling'])
+            # Position the coin
+            coin.center_x = random.randrange(self.sprite_size, self.screen_width-self.sprite_size, 1)
+            coin.center_y = random.randrange(self.sprite_size, self.screen_height-self.sprite_size, 1)
+            # Add the coin to the lists
+            self.rooms[treasure['location']].treasures_list.append(coin)
+        
+        self.current_room = 0
         # Create a physics engine for this room
         self.physics_engine = arcade.PhysicsEngineSimple(self.player, self.rooms[self.current_room].wall_list)
 
@@ -177,6 +143,7 @@ class MyGame(arcade.Window):
 
         # Draw all the walls in this room
         self.rooms[self.current_room].wall_list.draw()
+        self.rooms[self.current_room].treasures_list.draw()
         self.player_list.draw()
 
         # Put the text on the screen.
@@ -196,34 +163,46 @@ class MyGame(arcade.Window):
         self.player_list.update()
         self.player_list.update_animation()
 
+        # Generate a list of all sprites that collided with the player.
+        treasure_hit_list = arcade.check_for_collision_with_list(self.player, self.rooms[self.current_room].treasures_list)
+
+        # Loop through each colliding sprite, remove it, and add to the score.
+        for treasure in treasure_hit_list:
+            treasure.remove_from_sprite_lists()
+            self.score += 1
+
         # Do some logic here to figure out what room we are in, and if we need to go
         # to a different room.
         if self.player.center_x + self.player.lateralMargin >= self.screen_width:
-            if self.current_room == 0:
-                self.current_room = 1
-            elif self.current_room == 2:
-                self.current_room = 3            
+            self.current_room = self.rooms[self.current_room].getNearRooms('east')
+            # if self.current_room == 0:
+            #     self.current_room = 1
+            # elif self.current_room == 2:
+            #     self.current_room = 3            
             self.player.center_x = self.sprite_size + self.player.lateralMargin
             self.updateRoom(self.current_room)
         elif self.player.center_x - self.player.lateralMargin <= 0:
-            if self.current_room == 1:
-                self.current_room = 0
-            elif self.current_room == 3:
-                self.current_room = 2
+            # if self.current_room == 1:
+            #     self.current_room = 0
+            # elif self.current_room == 3:
+            #     self.current_room = 2
+            self.current_room = self.rooms[self.current_room].getNearRooms('west')
             self.player.center_x = self.screen_width - self.sprite_size - self.player.lateralMargin
             self.updateRoom(self.current_room)
         elif self.player.center_y - self.player.verticalMargin <= 0:
-            if self.current_room == 0:
-                self.current_room = 2
-            elif self.current_room == 1:
-                self.current_room = 3
+            # if self.current_room == 0:
+            #     self.current_room = 2
+            # elif self.current_room == 1:
+            #     self.current_room = 3
+            self.current_room = self.rooms[self.current_room].getNearRooms('south')
             self.player.center_y = self.screen_height - self.sprite_size - self.player.verticalMargin
             self.updateRoom(self.current_room)
         elif self.player.center_y + self.player.verticalMargin >= self.screen_height:
-            if self.current_room == 2:
-                self.current_room = 0
-            elif self.current_room == 3:
-                self.current_room = 1
+            # if self.current_room == 2:
+            #     self.current_room = 0
+            # elif self.current_room == 3:
+            #     self.current_room = 1
+            self.current_room = self.rooms[self.current_room].getNearRooms('north')
             self.player.center_y = self.sprite_size + self.player.verticalMargin
             self.updateRoom(self.current_room)
 
